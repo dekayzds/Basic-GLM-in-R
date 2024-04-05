@@ -1,0 +1,757 @@
+---
+title: "Analisis Regresi EPN"
+author: "Deri Siswara"
+date: "1 November 2022"
+toc: true
+format: docx
+---
+
+# Model Regresi 1
+## Model GLM
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+library(MASS)
+datareg <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 2.xlsx")
+head(datareg)
+summary(datareg)
+length(datareg)
+datareg$x2 <- as.factor(datareg$x2)
+datareg$x5 <- as.factor(datareg$x5)
+
+datareg$x2 <- as.numeric(datareg$x2)
+datareg$x5 <- as.numeric(datareg$x5)
+
+cor(datareg[,c(3,6,7,5,8)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg[,c(3,6,7,5,8)]), method="circle")
+```
+```{r}
+hist((datareg$y))
+hist((100-datareg$y))
+```
+### Uji Multikolinearitas
+```{r}
+datareg$yglm <-  as.integer(100-datareg$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5,data = datareg))
+```
+
+```{r}
+datareg <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 2.xlsx")
+datareg$x2 <- as.factor(datareg$x2)
+datareg$x5 <- as.factor(datareg$x5)
+
+library(pscl)
+datareg$yglm <-  as.integer(100-datareg$y)
+```
+
+### Gaussian/Normal
+
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5, data = datareg, family = gaussian)
+summary(modeln)
+```
+
+###Poisson
+
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5, data = datareg, family = poisson)
+summary(model1)
+```
+
+### Negative Binomial
+
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5, data = datareg)
+summary(model2)
+```
+
+### Zero-Inflated Poisson
+
+```{r}
+model3 <- zeroinfl(yglm ~ x1+x2+x3+x4+x5, data = datareg)
+summary(model3)
+AIC(model3)
+```
+
+### Zero-Inflated Negative Binomial
+```{r}
+model4 <- zeroinfl(yglm ~ x1+x2+x3+x4+x5, data = datareg, dist = "negbin")
+summary(model4)
+AIC(model4)
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model3, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model3)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model4, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model4)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRtest
+```{r}
+library(lmtest)
+lrtest(model1,model2, model3, model4)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+exp(model2$coefficients[7])
+# pend. non pertanian orang non milik 0.72kali dibandingkan orang milik. 
+# nonmilik = 60*0.72=43.2 , milik = 60%
+# Orang hyang tidak memiliki lahan, punya pendapatan non pertanian 28% lebih rendah dibandingkan orang yg memiliki lahan.60-60*28%=43.2
+
+```
+```{r}
+mean(datareg$y)
+var(datareg$y)
+plot(datareg$y,datareg$x4)
+cor(datareg$yglm,datareg$x1)
+boxplot(datareg$yglm~datareg$x2)
+boxplot(datareg$yglm~datareg$x5)
+```
+
+## Model OLS
+```{r}
+modelols <- lm(yglm ~ x1+x2+x3+x4+x5, data=datareg)
+summary(modelols)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols, vcov = vcovHAC(modelols))
+```
+
+# Model Regresi 2
+## Model GLM
+
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 revise.xlsx")
+head(datareg2)
+summary(datareg2)
+length(datareg)
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$x2 <- as.numeric(datareg2$x2)
+
+cor(datareg2[,c(3,6,7,5,8)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg2[,c(3,6,7,5,8)]), method="circle")
+```
+```{r}
+hist((datareg2$y))
+mean(datareg2$y)
+var(datareg2$y)
+```
+
+### Multikolinearitas
+```{r}
+datareg2$yglm <- as.integer(datareg2$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5,data = datareg2))
+```
+
+```{r}
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 revise.xlsx")
+datareg2$x2 <- as.factor(datareg2$x2)
+
+datareg2$yglm <- as.integer(datareg2$y)
+```
+
+### Gausian
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5, data = datareg2, family = gaussian)
+summary(modeln)
+```
+
+### Poisson
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5, data = datareg2, family = poisson)
+summary(model1)
+```
+
+### Negbin
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5, data = datareg2)
+summary(model2)
+
+
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRTest
+```{r}
+lrtest(model1,model2)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+```
+
+
+## Model OLS
+```{r}
+modelols2 <- lm(y ~ x1+x2+x3+x4+x5, data=datareg2)
+summary(modelols2)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols2)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols2) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols2$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols2)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols2, vcov = vcovHAC(modelols2))
+```
+
+# Model Regresi 3
+## Model GLM
+
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru.xlsx")
+head(datareg2)
+summary(datareg2)
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$x2 <- as.numeric(datareg2$x2)
+
+cor(datareg2[,c(2:7)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg2[,c(2:7)]), method="circle")
+```
+```{r}
+hist((datareg2$y))
+mean(datareg2$y)
+var(datareg2$y)
+```
+
+### Multikolinearitas
+```{r}
+datareg2$yglm <- as.integer(datareg2$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5+x6,data = datareg2))
+```
+
+```{r}
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru.xlsx")
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$yglm <- as.integer(datareg2$y)
+```
+
+### Gausian
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = gaussian)
+summary(modeln)
+```
+
+### Poisson
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = poisson)
+summary(model1)
+```
+
+### Negbin
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2)
+summary(model2)
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRTest
+```{r}
+lrtest(model1,model2)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+```
+
+
+## Model OLS
+```{r}
+modelols2 <- lm(y ~ x1+x2+x3+x4+x5+x6, data=datareg2)
+summary(modelols2)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols2)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols2) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols2$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols2)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols2, vcov = vcovHAC(modelols2))
+```
+
+# Model Regresi LK Kebun 
+## Model GLM
+
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="LK Kebun")
+head(datareg2)
+summary(datareg2)
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$x2 <- as.numeric(datareg2$x2)
+cor(datareg2[,c(3:8)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg2[,c(3:8)]), method="circle")
+```
+```{r}
+hist((datareg2$y))
+mean(datareg2$y)
+var(datareg2$y)
+```
+
+### Multikolinearitas
+```{r}
+datareg2$yglm <- as.integer(datareg2$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5+x6,data = datareg2))
+```
+
+```{r}
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="LK Kebun")
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$yglm <- as.integer(datareg2$y)
+```
+
+### Gausian
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = gaussian)
+summary(modeln)
+```
+
+### Poisson
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = poisson)
+summary(model1)
+```
+
+### Negbin
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2)
+summary(model2)
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRTest
+```{r}
+lrtest(model1,model2)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+```
+
+
+## Model OLS
+```{r}
+modelols2 <- lm(y ~ x1+x2+x3+x4+x5+x6, data=datareg2)
+summary(modelols2)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols2)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols2) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols2$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols2)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols2, vcov = vcovHAC(modelols2))
+```
+
+
+# Model Regresi LK Sayuran dan Palawija
+## Model GLM
+
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="LK Sayuran dan Palawija")
+head(datareg2)
+summary(datareg2)
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$x2 <- as.numeric(datareg2$x2)
+cor(datareg2[,c(3:8)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg2[,c(3:8)]), method="circle")
+```
+```{r}
+hist((datareg2$y))
+mean(datareg2$y)
+var(datareg2$y)
+```
+
+### Multikolinearitas
+```{r}
+datareg2$yglm <- as.integer(datareg2$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5+x6,data = datareg2))
+```
+
+```{r}
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="LK Sayuran dan Palawija")
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$yglm <- as.integer(datareg2$y)
+```
+
+### Gausian
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = gaussian)
+summary(modeln)
+```
+
+### Poisson
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = poisson)
+summary(model1)
+```
+
+### Negbin
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2)
+summary(model2)
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRTest
+```{r}
+lrtest(model1,model2)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+```
+
+
+## Model OLS
+```{r}
+modelols2 <- lm(y ~ x1+x2+x3+x4+x5+x6, data=datareg2)
+summary(modelols2)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols2)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols2) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols2$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols2)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols2, vcov = vcovHAC(modelols2))
+```
+
+
+# Model Regresi Sawah Padi
+## Model GLM
+
+```{r}
+library(psych)
+library(dplyr)
+library(readxl)
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="Sawah Padi")
+head(datareg2)
+summary(datareg2)
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$x2 <- as.numeric(datareg2$x2)
+cor(datareg2[,c(3:8)]) #Ubah dulu ke numeric yg factor
+corrplot::corrplot(cor(datareg2[,c(3:8)]), method="circle")
+```
+```{r}
+hist((datareg2$y))
+mean(datareg2$y)
+var(datareg2$y)
+```
+
+### Multikolinearitas
+```{r}
+datareg2$yglm <- as.integer(datareg2$y)
+car::vif(lm(yglm ~ x1+x2+x3+x4+x5+x6,data = datareg2))
+```
+
+```{r}
+datareg2 <- read_excel("D:\\Project\\Analisis Regresi GLM EPN\\Tujuan 3 terbaru based on agroekosistem.xlsx")
+datareg2 <- subset(datareg2,kom=="Sawah Padi")
+datareg2$x2 <- as.factor(datareg2$x2)
+datareg2$yglm <- as.integer(datareg2$y)
+```
+
+### Gausian
+```{r}
+modeln <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = gaussian)
+summary(modeln)
+```
+
+### Poisson
+```{r}
+model1 <- glm(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2, family = poisson)
+summary(model1)
+```
+
+### Negbin
+```{r}
+model2 <- glm.nb(yglm ~ x1+x2+x3+x4+x5+x6, data = datareg2)
+summary(model2)
+```
+
+### Dispersion Ratio
+```{r}
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+
+E2 <- resid(model2, type = "pearson")
+N  <- nrow(datareg2)
+p  <- length(coef(model2)) + 1 # '+1' is due to theta
+sum(E2^2) / (N - p)
+```
+
+### LRTest
+```{r}
+lrtest(model1,model2)
+```
+
+### Koefisien Interpretable dan Visualisasi
+```{r}
+exp(model2$coefficients[1])
+exp(model2$coefficients[2])
+exp(model2$coefficients[2])
+exp(model2$coefficients[3])
+exp(model2$coefficients[4])
+exp(model2$coefficients[5])
+exp(model2$coefficients[6])
+```
+
+
+## Model OLS
+```{r}
+modelols2 <- lm(y ~ x1+x2+x3+x4+x5+x6, data=datareg2)
+summary(modelols2)
+```
+
+## Uji Asumsi Regresi Klasik
+```{r}
+#Asumsi 2: Ragam sisaan homogen
+library(lmtest)
+bptest(modelols2)
+```
+```{r}
+#Asumsi 3: Antar sisaan saling bebas atau tidak ada autokorelasi
+bgtest(modelols2) #Breush-Godfrey Test
+```
+```{r}
+#Asumsi 4: Sisaan menyebar normal
+library(nortest)
+ad.test(modelols2$residuals)
+```
+```{r}
+#Prasyarat: Multikolinearitas
+library(car)
+vif(modelols2)
+#write.csv(data.frame(vif(model2)), 'vif.csv')
+```
+```{r}
+#HAC Standard Errors: Jika ada masalah hetroskedastisirtas dan autokorelasi
+library(sandwich)
+coeftest(modelols2, vcov = vcovHAC(modelols2))
+```
